@@ -1,0 +1,44 @@
+server:
+  port: 8080
+
+resilience4j:
+  # 1) TIMEOUT: max time budget for the whole operation
+  timelimiter:
+    instances:
+      employeeService:
+        timeoutDuration: 6s
+        cancelRunningFuture: true
+
+  # 2) RETRY: controlled second chances
+  retry:
+    instances:
+      employeeService:
+        maxAttempts: 3
+        waitDuration: 200ms
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - org.springframework.web.reactive.function.client.WebClientRequestException
+          - org.springframework.web.reactive.function.client.WebClientResponseException$ServiceUnavailable
+        ignoreExceptions:
+          - org.springframework.web.reactive.function.client.WebClientResponseException$BadRequest
+          - org.springframework.web.reactive.function.client.WebClientResponseException$NotFound
+
+  # 3) CIRCUIT BREAKER: stop calling if failure rate is too high
+  circuitbreaker:
+    instances:
+      employeeService:
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 20
+        minimumNumberOfCalls: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 3
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
